@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/velopert/gin-rest-api-sample/database"
 )
 
 func main() {
@@ -13,6 +15,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// initializes database
+	db, _ := database.Initialize()
+
+	fmt.Println(db)
 
 	port := os.Getenv("PORT")
 
