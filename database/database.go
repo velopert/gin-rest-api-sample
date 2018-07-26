@@ -6,6 +6,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql" // configures mysql driver
+	"github.com/velopert/gin-rest-api-sample/database/models"
 )
 
 // Initialize initializes the database
@@ -17,5 +18,6 @@ func Initialize() (*gorm.DB, error) {
 		panic(err)
 	}
 	fmt.Println("Connected to database")
+	models.Migrate(db)
 	return db, err
 }

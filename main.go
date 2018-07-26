@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/velopert/gin-rest-api-sample/api"
 	"github.com/velopert/gin-rest-api-sample/database"
+	"github.com/velopert/gin-rest-api-sample/lib/middlewares"
 )
 
 func main() {
@@ -19,15 +20,10 @@ func main() {
 	// initializes database
 	db, _ := database.Initialize()
 
-	fmt.Println(db)
-
 	port := os.Getenv("PORT")
-
-	app := gin.Default()
-	app.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	app.Run(":" + port)
+	app := gin.Default() // create gin app
+	app.Use(database.Inject(db))
+	app.Use(middlewares.JWTMiddleware())
+	api.ApplyRoutes(app) // apply api router
+	app.Run(":" + port)  // listen to given port
 }
