@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/velopert/gin-rest-api-sample/database/models"
 	"github.com/velopert/gin-rest-api-sample/lib/common"
 )
 
@@ -47,13 +49,25 @@ func validateToken(tokenString string) (common.JSON, error) {
 }
 
 // JWTMiddleware parses JWT token from cookie and stores data and expires date to the context
+// JWT Token can be passed as cookie, or Authorization header
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString, err := c.Cookie("token")
 		// failed to read cookie
 		if err != nil {
-			c.Next()
-			return
+			// try reading HTTP Header
+			authorization := c.Request.Header.Get("Authorization")
+			if authorization == "" {
+				c.Next()
+				return
+			}
+			sp := strings.Split(authorization, "Bearer ")
+			// invalid token
+			if len(sp) < 1 {
+				c.Next()
+				return
+			}
+			tokenString = sp[1]
 		}
 
 		tokenData, err := validateToken(tokenString)
@@ -61,7 +75,11 @@ func JWTMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		c.Set("user", tokenData["user"])
+
+		var user models.User
+		user.Read(tokenData["user"].(common.JSON))
+
+		c.Set("user", user)
 		c.Set("token_expire", tokenData["exp"])
 		c.Next()
 	}

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -134,29 +135,32 @@ func login(c *gin.Context) {
 
 // check API will renew token when token life is less than 3 days, otherwise, return null for token
 func check(c *gin.Context) {
-	user, ok := c.Get("user")
+	userRaw, ok := c.Get("user")
 	if !ok {
 		c.AbortWithStatus(401)
 		return
 	}
 
+	user := userRaw.(User)
+
 	tokenExpire := int64(c.MustGet("token_expire").(float64))
 	now := time.Now().Unix()
 	diff := tokenExpire - now
 
+	fmt.Println(diff)
 	if diff < 60*60*24*3 {
 		// renew token
-		token, _ := generateToken(user.(common.JSON))
+		token, _ := generateToken(user.Serialize())
 		c.SetCookie("token", token, 60*60*24*7, "/", "", false, true)
 		c.JSON(200, common.JSON{
 			"token": token,
-			"user":  user,
+			"user":  user.Serialize(),
 		})
 		return
 	}
 
 	c.JSON(200, common.JSON{
 		"token": nil,
-		"user":  user,
+		"user":  user.Serialize(),
 	})
 }
