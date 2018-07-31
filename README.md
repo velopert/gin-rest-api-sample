@@ -59,3 +59,9 @@ To explicitly compile the code before you run the server:
 $ go build main.go
 $ ./main
 ```
+
+To use live-reloading in development environment, 
+
+```
+$ ./scripts/start-dev
+```
