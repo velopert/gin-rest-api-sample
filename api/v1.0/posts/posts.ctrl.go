@@ -88,9 +88,16 @@ func remove(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	id := c.Param("id")
 
+	user := c.MustGet("user").(User)
+
 	var post Post
 	if err := db.Where("id = ?", id).First(&post).Error; err != nil {
 		c.AbortWithStatus(404)
+		return
+	}
+
+	if post.UserID != user.ID {
+		c.AbortWithStatus(403)
 		return
 	}
 
@@ -101,6 +108,8 @@ func remove(c *gin.Context) {
 func update(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	id := c.Param("id")
+
+	user := c.MustGet("user").(User)
 
 	type RequestBody struct {
 		Text string `json:"text" binding:"required"`
@@ -116,6 +125,11 @@ func update(c *gin.Context) {
 	var post Post
 	if err := db.Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
 		c.AbortWithStatus(404)
+		return
+	}
+
+	if post.UserID != user.ID {
+		c.AbortWithStatus(403)
 		return
 	}
 
