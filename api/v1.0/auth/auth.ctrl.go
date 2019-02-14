@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
@@ -60,20 +61,20 @@ func register(c *gin.Context) {
 
 	var body RequestBody
 	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithStatus(400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	// check existancy
 	var exists User
 	if err := db.Where("username = ?", body.Username).First(&exists).Error; err == nil {
-		c.AbortWithStatus(409)
+		c.AbortWithStatus(http.StatusConflict)
 		return
 	}
 
 	hash, hashErr := hash(body.Password)
 	if hashErr != nil {
-		c.AbortWithStatus(500)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -91,7 +92,7 @@ func register(c *gin.Context) {
 	token, _ := generateToken(serialized)
 	c.SetCookie("token", token, 60*60*24*7, "/", "", false, true)
 
-	c.JSON(200, common.JSON{
+	c.JSON(http.StatusOK, common.JSON{
 		"user":  user.Serialize(),
 		"token": token,
 	})
@@ -106,19 +107,19 @@ func login(c *gin.Context) {
 
 	var body RequestBody
 	if err := c.BindJSON(&body); err != nil {
-		c.AbortWithStatus(400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	// check existancy
 	var user User
 	if err := db.Where("username = ?", body.Username).First(&user).Error; err != nil {
-		c.AbortWithStatus(404) // user not found
+		c.AbortWithStatus(http.StatusNotFound) // user not found
 		return
 	}
 
 	if !checkHash(body.Password, user.PasswordHash) {
-		c.AbortWithStatus(401)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
@@ -137,7 +138,7 @@ func login(c *gin.Context) {
 func check(c *gin.Context) {
 	userRaw, ok := c.Get("user")
 	if !ok {
-		c.AbortWithStatus(401)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
@@ -152,14 +153,14 @@ func check(c *gin.Context) {
 		// renew token
 		token, _ := generateToken(user.Serialize())
 		c.SetCookie("token", token, 60*60*24*7, "/", "", false, true)
-		c.JSON(200, common.JSON{
+		c.JSON(http.StatusOK, common.JSON{
 			"token": token,
 			"user":  user.Serialize(),
 		})
 		return
 	}
 
-	c.JSON(200, common.JSON{
+	c.JSON(http.StatusOK, common.JSON{
 		"token": nil,
 		"user":  user.Serialize(),
 	})
