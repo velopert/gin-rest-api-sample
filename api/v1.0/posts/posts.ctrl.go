@@ -5,6 +5,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/velopert/gin-rest-api-sample/database/models"
 	"github.com/velopert/gin-rest-api-sample/lib/common"
+	"net/http"
 )
 
 // Post type alias
@@ -24,7 +25,7 @@ func create(c *gin.Context) {
 	var requestBody RequestBody
 
 	if err := c.BindJSON(&requestBody); err != nil {
-		c.AbortWithStatus(400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
@@ -32,7 +33,7 @@ func create(c *gin.Context) {
 	post := Post{Text: requestBody.Text, User: user}
 	db.NewRecord(post)
 	db.Create(&post)
-	c.JSON(200, post.Serialize())
+	c.JSON(http.StatusOK, post.Serialize())
 }
 
 func list(c *gin.Context) {
@@ -45,7 +46,7 @@ func list(c *gin.Context) {
 
 	if cursor == "" {
 		if err := db.Preload("User").Limit(10).Order("id desc").Find(&posts).Error; err != nil {
-			c.AbortWithStatus(500)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -54,7 +55,7 @@ func list(c *gin.Context) {
 			condition = "id > ?"
 		}
 		if err := db.Preload("User").Limit(10).Order("id desc").Where(condition, cursor).Find(&posts).Error; err != nil {
-			c.AbortWithStatus(500)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -66,7 +67,7 @@ func list(c *gin.Context) {
 		serialized[i] = posts[i].Serialize()
 	}
 
-	c.JSON(200, serialized)
+	c.JSON(http.StatusOK, serialized)
 }
 
 func read(c *gin.Context) {
@@ -77,11 +78,11 @@ func read(c *gin.Context) {
 	// auto preloads the related model
 	// http://gorm.io/docs/preload.html#Auto-Preloading
 	if err := db.Set("gorm:auto_preload", true).Where("id = ?", id).First(&post).Error; err != nil {
-		c.AbortWithStatus(404)
+		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
-	c.JSON(200, post.Serialize())
+	c.JSON(http.StatusOK, post.Serialize())
 }
 
 func remove(c *gin.Context) {
@@ -92,17 +93,17 @@ func remove(c *gin.Context) {
 
 	var post Post
 	if err := db.Where("id = ?", id).First(&post).Error; err != nil {
-		c.AbortWithStatus(404)
+		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
 	if post.UserID != user.ID {
-		c.AbortWithStatus(403)
+		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
 	db.Delete(&post)
-	c.Status(204)
+	c.Status(http.StatusNoContent)
 }
 
 func update(c *gin.Context) {
@@ -118,22 +119,22 @@ func update(c *gin.Context) {
 	var requestBody RequestBody
 
 	if err := c.BindJSON(&requestBody); err != nil {
-		c.AbortWithStatus(400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	var post Post
 	if err := db.Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
-		c.AbortWithStatus(404)
+		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
 	if post.UserID != user.ID {
-		c.AbortWithStatus(403)
+		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
 	post.Text = requestBody.Text
 	db.Save(&post)
-	c.JSON(200, post.Serialize())
+	c.JSON(http.StatusOK, post.Serialize())
 }
